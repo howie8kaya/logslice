@@ -1,50 +1,53 @@
-"""Output formatters for parsed log entries."""
+"""Output formatters for log entries."""
 
-import json
 import csv
 import io
-from typing import Iterable
+import json
+from typing import List, Optional
+
+from logslice.highlight import apply_highlight
 from logslice.parser import LogEntry
 
 
-FORMAT_PLAIN = "plain"
-FORMAT_JSON = "json"
-FORMAT_CSV = "csv"
-
-SUPPORTED_FORMATS = (FORMAT_PLAIN, FORMAT_JSON, FORMAT_CSV)
-
-
-def format_entries(entries: Iterable[LogEntry], fmt: str) -> str:
-    """Format a collection of log entries into the specified output format."""
-    if fmt == FORMAT_PLAIN:
-        return _format_plain(entries)
-    elif fmt == FORMAT_JSON:
+def format_entries(
+    entries: List[LogEntry],
+    fmt: str = "plain",
+    highlight: bool = False,
+    pattern: Optional[str] = None,
+) -> str:
+    """Dispatch to the appropriate formatter."""
+    if fmt == "json":
         return _format_json(entries)
-    elif fmt == FORMAT_CSV:
+    if fmt == "csv":
         return _format_csv(entries)
-    else:
-        raise ValueError(f"Unsupported format '{fmt}'. Choose from: {SUPPORTED_FORMATS}")
+    return _format_plain(entries, highlight=highlight, pattern=pattern)
 
 
-def _format_plain(entries: Iterable[LogEntry]) -> str:
+def _format_plain(
+    entries: List[LogEntry],
+    highlight: bool = False,
+    pattern: Optional[str] = None,
+) -> str:
     lines = []
     for entry in entries:
-        lines.append(f"[{entry.line_number}] {entry.raw.strip()}")
+        raw = entry.raw.rstrip()
+        if highlight:
+            raw = apply_highlight(raw, entry.level, pattern)
+        lines.append(f"[{entry.line_number}] {raw}")
     return "\n".join(lines)
 
 
-def _format_json(entries: Iterable[LogEntry]) -> str:
-    data = [entry.to_dict() for entry in entries]
-    return json.dumps(data, indent=2)
+def _format_json(entries: List[LogEntry]) -> str:
+    return json.dumps([entry.to_dict() for entry in entries], indent=2, default=str)
 
 
-def _format_csv(entries: Iterable[LogEntry]) -> str:
-    output = io.StringIO()
-    fieldnames = ["line_number", "raw", "matched_groups"]
-    writer = csv.DictWriter(output, fieldnames=fieldnames)
+def _format_csv(entries: List[LogEntry]) -> str:
+    buf = io.StringIO()
+    fieldnames = ["line_number", "timestamp", "level", "message", "raw"]
+    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
     writer.writeheader()
     for entry in entries:
         row = entry.to_dict()
-        row["matched_groups"] = json.dumps(row["matched_groups"])
+        row["raw"] = entry.raw.rstrip()
         writer.writerow(row)
-    return output.getvalue().strip()
+    return buf.getvalue().rstrip()
