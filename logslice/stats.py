@@ -8,6 +8,12 @@ from typing import Dict, List, Optional
 from logslice.parser import LogEntry
 
 
+# Words that are too common to be useful as patterns
+_STOP_WORDS = frozenset(
+    {"the", "and", "for", "this", "that", "with", "from", "have", "will", "been"}
+)
+
+
 @dataclass
 class LogStats:
     total: int = 0
@@ -50,12 +56,12 @@ def compute_stats(entries: List[LogEntry], top_n: int = 5) -> LogStats:
         stats.first_timestamp = min(timestamps)
         stats.last_timestamp = max(timestamps)
 
-    # Top words across all raw lines (simple tokenisation)
+    # Top words across all raw lines (simple tokenisation), excluding stop words
     word_counter: Counter = Counter()
     for entry in entries:
         for word in entry.raw.split():
             clean = word.strip("[]():,;.").lower()
-            if len(clean) > 3:
+            if len(clean) > 3 and clean not in _STOP_WORDS:
                 word_counter[clean] += 1
     stats.top_patterns = word_counter.most_common(top_n)
 
