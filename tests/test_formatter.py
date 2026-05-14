@@ -43,6 +43,14 @@ def test_json_format_has_expected_keys():
         assert "matched_groups" in item
 
 
+def test_json_format_preserves_matched_groups():
+    """Ensure matched_groups values are correctly serialized in JSON output."""
+    output = format_entries(make_entries(), FORMAT_JSON)
+    data = json.loads(output)
+    assert data[0]["matched_groups"] == {"level": "INFO"}
+    assert data[1]["matched_groups"] == {"level": "ERROR"}
+
+
 def test_csv_format_has_header():
     output = format_entries(make_entries(), FORMAT_CSV)
     reader = csv.DictReader(io.StringIO(output))
@@ -69,3 +77,11 @@ def test_empty_entries_plain():
 def test_empty_entries_json():
     output = format_entries([], FORMAT_JSON)
     assert json.loads(output) == []
+
+
+def test_empty_entries_csv():
+    """Empty entries should still produce a CSV header with no data rows."""
+    output = format_entries([], FORMAT_CSV)
+    reader = csv.DictReader(io.StringIO(output))
+    assert reader.fieldnames == ["line_number", "raw", "matched_groups"]
+    assert list(reader) == []
