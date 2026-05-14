@@ -26,8 +26,23 @@ def add_tail_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _format_entry(entry, output_format: str, highlight: bool, pattern, ignore_case: bool) -> str:
+    """Format a single log *entry* and optionally apply highlight.
+
+    Returns the formatted string (without a trailing newline).
+    """
+    lines = format_entries([entry], fmt=output_format, highlight=False)
+    if highlight and output_format == "plain":
+        lines = apply_highlight(lines, pattern=pattern, ignore_case=ignore_case)
+    return lines
+
+
 def handle_tail(args: argparse.Namespace) -> None:
-    """Stream new log entries from *args.file* to stdout."""
+    """Stream new log entries from *args.file* to stdout.
+
+    Reads *args.file* from its current end and prints each new entry as it
+    arrives.  Exits cleanly on KeyboardInterrupt (Ctrl-C).
+    """
     pattern = getattr(args, "pattern", None)
     ignore_case = getattr(args, "ignore_case", False)
     highlight = getattr(args, "highlight", False)
@@ -41,9 +56,7 @@ def handle_tail(args: argparse.Namespace) -> None:
             parser=parser,
             poll_interval=args.poll_interval,
         ):
-            lines = format_entries([entry], fmt=output_format, highlight=False)
-            if highlight and output_format == "plain":
-                lines = apply_highlight(lines, pattern=pattern, ignore_case=ignore_case)
+            lines = _format_entry(entry, output_format, highlight, pattern, ignore_case)
             sys.stdout.write(lines + "\n")
             sys.stdout.flush()
     except KeyboardInterrupt:
