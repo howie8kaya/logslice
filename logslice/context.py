@@ -14,6 +14,15 @@ def extract_with_context(
 
     Returns a list of (entry, is_match) tuples. Duplicate entries are
     deduplicated while preserving order.
+
+    Args:
+        entries: The full list of parsed log entries.
+        matched_indices: Indices (into ``entries``) that satisfied the filter.
+        before: Number of lines to include before each match.
+        after: Number of lines to include after each match.
+
+    Returns:
+        Ordered list of ``(entry, is_match)`` tuples with no duplicates.
     """
     if not matched_indices:
         return []
@@ -37,7 +46,19 @@ def extract_with_context(
 def find_matched_indices(
     entries: List[LogEntry], filtered: List[LogEntry]
 ) -> List[int]:
-    """Map filtered entries back to their indices in the original list."""
+    """Map filtered entries back to their indices in the original list.
+
+    Uses object identity (``id()``) for O(1) lookup, so ``filtered`` must
+    contain the exact same objects as the corresponding elements in ``entries``.
+
+    Args:
+        entries: The full list of parsed log entries.
+        filtered: A subset of ``entries`` that passed a filter.
+
+    Returns:
+        List of indices in ``entries`` corresponding to each item in
+        ``filtered``, in the same order.
+    """
     # Build index by id for O(1) lookup
     id_to_index = {id(e): i for i, e in enumerate(entries)}
     indices = []
