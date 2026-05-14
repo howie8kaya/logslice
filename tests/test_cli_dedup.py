@@ -99,6 +99,26 @@ def test_handle_dedup_keep_last(parser):
     assert result[0].lineno == 9
 
 
+def test_handle_dedup_empty_input(parser):
+    """Dedup on an empty list should return an empty list without errors."""
+    ns = parser.parse_args(["--dedup"])
+    result = handle_dedup(ns, [])
+    assert result == []
+
+
+def test_handle_dedup_no_duplicates_unchanged(parser):
+    """When all entries are unique, dedup should preserve all of them."""
+    entries = [
+        make_entry("alpha", lineno=1),
+        make_entry("beta", lineno=2),
+        make_entry("gamma", lineno=3),
+    ]
+    ns = parser.parse_args(["--dedup"])
+    result = handle_dedup(ns, entries)
+    assert len(result) == 3
+    assert [e.lineno for e in result] == [1, 2, 3]
+
+
 def test_handle_dedup_stats_prints_to_stderr(parser, capsys):
     entries = [
         make_entry("boom", lineno=1),
